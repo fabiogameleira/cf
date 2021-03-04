@@ -1,0 +1,114 @@
+name = Malão Web
+description = A Bootstrap Sub-theme malao paper.
+core = 7.x
+base theme = bootstrap
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Regions
+;;;;;;;;;;;;;;;;;;;;;
+
+regions[top_print]       = 'top print'
+regions[top_left]       = 'top left'
+regions[top]            = 'top'
+regions[barra]          = 'barra'
+regions[navigation]     = 'Navigation'
+regions[highlighted]    = 'Highlighted'
+regions[help]           = 'Help'
+regions[content_top]    = 'Content top'
+regions[content]        = 'Content'
+regions[content_bottom] = 'Content Bottom'
+regions[sidebar_first]  = 'Primary'
+regions[sidebar_second] = 'Secondary'
+;;regions[parceiros1]     = 'Parceiros 1'
+;;regions[parceiros2]     = 'Parceiros 2'
+;;regions[parceiros3]     = 'Parceiros 3'
+;;regions[pos_content1]   = 'Pos content 1'
+;;regions[pos_content2]   = 'Pos content 2'
+;;regions[pos_content3]   = 'Pos content 3'
+;;regions[pos_content4]   = 'Pos content 4'
+regions[footer]           = 'Footer'
+regions[footer_right]      = 'Footer right'
+;;regions[page_top]       = 'Page top'
+;;regions[page_bottom]    = 'Page bottom'
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Stylesheets
+;;;;;;;;;;;;;;;;;;;;;
+
+stylesheets[all][]   = bootstrap/css/bootstrap.css
+stylesheets[all][]   = fonts/font-awesome/css/font-awesome.min.css
+stylesheets[all][]   = css/materialize.css
+stylesheets[all][]   = css/style.css
+stylesheets[all][]   = css/contraste.css
+stylesheets[all][]   = css/fontes.css
+stylesheets[all][]   = css/malao.css
+stylesheets[print][] = css/print.css
+
+; ;;;;;;;;;;;;;;;;;;;;;
+; ;; malao Scripts
+; ;;;;;;;;;;;;;;;;;;;;;
+scripts[] = 'js/tratacampos.js'
+scripts[] = 'js/highcontrast.js'
+//scripts[] = 'js/tac_unsetdisabled.js'
+;;scripts[print] = 'js/imprimeficha.js'
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Theme Settings
+;;;;;;;;;;;;;;;;;;;;;
+
+; Color scheme
+; --------------
+settings[malao_color_scheme] = 'blue'
+
+; General
+; --------------
+settings[toggle_logo] = 0
+
+; Region Wells
+; --------------
+settings[bootstrap_region_well-navigation] = ''
+settings[bootstrap_region_well-header] = ''
+settings[bootstrap_region_well-highlighted] = ''
+settings[bootstrap_region_well-help] = ''
+settings[bootstrap_region_well-content] = ''
+settings[bootstrap_region_well-sidebar_first] = ''
+settings[bootstrap_region_well-footer] = ''
+settings[bootstrap_region_well-footer_firstcolumn] = ''
+settings[bootstrap_region_well-footer_secondcolumn] = ''
+settings[bootstrap_region_well-footer_thirdcolumn] = ''
+settings[bootstrap_region_well-footer_fourthcolumn] = ''
+
+
+; ;;;;;;;;;;;;;;;;;;;;;
+; ;; Bootstrap Scripts
+; ;;;;;;;;;;;;;;;;;;;;;
+; 
+;scripts[] = 'bootstrap/js/bootstrap.js'
+scripts[] = 'bootstrap/js/affix.js'
+scripts[] = 'bootstrap/js/alert.js'
+scripts[] = 'bootstrap/js/button.js'
+scripts[] = 'bootstrap/js/carousel.js'
+scripts[] = 'bootstrap/js/collapse.js'
+scripts[] = 'bootstrap/js/dropdown.js'
+scripts[] = 'bootstrap/js/modal.js'
+scripts[] = 'bootstrap/js/tooltip.js'
+scripts[] = 'bootstrap/js/popover.js'
+scripts[] = 'bootstrap/js/scrollspy.js'
+scripts[] = 'bootstrap/js/tab.js'
+scripts[] = 'bootstrap/js/transition.js'
+
+
+; ; Disable BootstrapCDN if using Bootstrap source files in your sub-theme.
+settings[bootstrap_cdn] = ''
+
+; ; Simplytest.me dependencies
+simplytest_dependencies[] = bootstrap
+simplytest_dependencies[] = jquery_update
+
+; Information added by Drupal.org packaging script on 2015-04-08
+version = "7.x-1.0"
+core = "7.x"
+project = "Malão Web"
+datestamp = "1428517984"
+

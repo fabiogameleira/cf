@@ -1,0 +1,93 @@
+#pf-body #pf-tagline {
+    text-align: center;
+    margin: .5rem 0;
+    color: #000000;
+	font-weight: 600;
+    font-size: 1.3em;
+    font-family: font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	text-transform: uppercase;
+}
+
+#pf-body {
+    color: #222;
+}
+
+#pf-body #pf-title {
+    margin-bottom: 0.3rem;
+    margin-top: 0px;
+    font-size: 24px;
+    border-bottom: 1px solid #dddddd;
+}
+
+#pf-body h1, #pf-body h2, #pf-body h3, #pf-body h4 {
+    margin-top: 1.125em;
+    border-bottom: 1px solid #8e8e8e;
+    padding-bottom: .3em;
+    clear: both;
+    font-weight: unset;
+    font-family: font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+ 
+#pf-content h2 { 
+	display: none;
+}
+
+.tabs--primary.nav.nav-tabs {
+	display:none;
+}
+
+.view-mode-full .field .field-label, 
+.node .field .field-label, 
+fieldset.grupo .panel-title, 
+fieldset.grupo .fieldset-wrapper label, .user-profile h3 {
+	text-transform: uppercase;
+    color: #9e9e9e;
+    font-weight: 600;
+    font-size: 0.65em;
+    margin-bottom: 0;
+}
+
+.view-mode-full .field, .node .field {
+    display: inline-block;
+    margin: 0px 15px 10px 5px;
+    min-height: unset;
+}
+
+fieldset.grupo legend {
+    width: auto;
+}
+
+fieldset.grupo {
+    background-color: transparent;
+    border: 1px solid #dddddd;
+    box-shadow: 1px 1px 1px rgb(0 0 0 / 50%);
+    padding: 0px 10px 0 10px;
+	clear: both;
+    margin-bottom: 0;
+    border-radius: 2px;
+    outline: none;
+    min-height: 3em;
+    font-size: 16px;
+    margin: 0 0 8px 0;
+    -webkit-box-shadow: none;
+    -webkit-box-sizing: content-box;
+    box-sizing: content-box;
+    -webkit-transition: border .3s, -webkit-box-shadow .3s;
+    transition: border .3s, -webkit-box-shadow .3s;
+    transition: box-shadow .3s, border .3s;
+    transition: box-shadow .3s, border .3s, -webkit-box-shadow .3s;
+}
+
+.field-items p {
+  margin-top: 2px;
+  margin-bottom: 0;  
+}
+
+.assinatura {
+	display: block;
+	margin-top: 100px;
+}
+
+#pf-body #pf-src {
+    display: none;
+}

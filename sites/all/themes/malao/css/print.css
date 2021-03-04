@@ -1,0 +1,303 @@
+* {
+background:transparent !important;
+color:#000 !important;
+text-shadow:none !important;
+filter:none !important;
+-ms-filter:none !important;
+}
+
+body {
+	margin:0;
+	padding:0;
+	line-height: 1.4em;
+    width: 21cm;
+    margin: 0 auto;
+}
+
+nav, footer, video, audio, object, embed { 
+   display:none;
+}
+
+.tabs--primary.nav.nav-tabs,
+.links.list-inline {
+	display: none;
+}
+
+h2.element-invisible {
+		display: none;
+}
+
+.top-print {
+	display: block;
+}
+
+.cabecalho-fichafiliado {
+	position: fixed;
+	top:0;
+    display:block;	
+}
+
+.top-left, .top-right {
+	display: none;
+}
+
+
+.node-type-filiado .barra {
+	display:block;
+}
+
+/*
+.view-mode-full .field-items {
+    margin: 10px 10px 20px 0;
+}*/
+
+.field.field-name-submitted-by {
+	display:none;
+}
+
+.print {
+display:block;
+}
+
+.no-print { 
+display:none; 
+}
+
+img {
+max-width: 100%;
+}
+
+aside {
+display:block;
+page-break-before: always;
+}
+
+.wrap { 
+width: 100%; 
+margin: 0; 
+float: none !important; 
+}
+
+h1 {
+font-size: 24pt;
+}
+
+h2 {
+font-size: 18pt;
+}
+
+h3 {
+font-size: 14pt;
+}
+
+q:after {
+content: " (" attr(cite) ")";
+}
+
+a, a:visited {
+text-decoration: underline;
+}
+
+a:link:after, a:visited:after {
+content: " (" attr(href) ") ";
+}
+
+a:after, a[href^="javascript:"]:after, a[href^="#"]:after { 
+content: ""; 
+}
+
+a[href]:after {
+	content: ""; 
+   }
+
+p a {
+word-wrap: break-word;
+}
+
+p {
+widows: 3;
+}
+
+p {
+orphans: 3;
+}
+.page-break { 
+page-break-before: always; 
+}
+
+#breadcrumb, #region-sidebar-first, #region-sidebar-second, .node-links, .field-name-field-recipe-tags {
+	display:none;
+}
+
+.print-content,
+.print-footer {
+	width: 21cm;
+	margin: 0;
+	padding: 0; 
+	border: 0;
+	float: none !important;
+	color: black; 
+	background: transparent;
+}
+
+.print-footer {
+	width: auto; 
+	margin: 40px 5%;
+	padding: 0; 
+	border: 0;
+	float: none !important;
+	color: black; 
+	background: transparent;
+}
+	
+/* Específico Impresão de node filiado*/
+
+.print-breadcrumb,
+.print-site_name {
+display:none;
+}
+
+
+
+.field-label {
+  margin-right: 30px;		
+}
+
+fieldset {
+  padding: 10px;	
+  margin-bottom: 10px;
+  min-height: 50px;
+}
+
+fieldset.grupo.pdf .panel-title.fieldset-legend {
+	font-size: 1em;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.field-label-inline .field-label, .field-label-inline .field-items {
+    float: unset;
+}
+
+.field {
+	display: inline-block;
+}
+
+.btn,
+.tabledrag-toggle-weight,
+.help-block,
+.file-display {
+	display:none;
+}
+
+ 
+
+form {
+    border: unset;
+    box-shadow: unset;
+    padding: 0;
+    border-radius:unset;
+    background-color: unset;
+}
+.node-form .form-wrapper.form-group {
+    display: inline-flex;
+    margin: 0px 5px 5px 5px;
+}
+
+.tabs-left.vertical-tabs.clearfix.bootstrap-tabs-processed {
+	display:none;
+}
+
+#footer::after { content: '| Página ' counter(page); }
+#footer {
+/* string-set: footing content(); */
+running: footer;
+position: fixed;
+bottom: -10px;
+left: 0;
+right: 10px;
+height: 12px;
+
+/** Extra personal styles **/
+color: black;
+text-align: right;
+line-height: 12px;
+padding: 2em auto 0;
+max-width: 767px;
+}
+
+@page {
+	size: A4 portrait;
+	margin: 0.2cm 0.5cm 1.2cm 0cm;
+	counter-increment: page;
+ }
+ 
+.imprimir {
+	display:none;
+}
+
+.region.region-content-top {
+	display:none;
+}
+
+.node-type-filiado .page-header,
+.page-meus-dados .page-header,
+.page-node-add-filiado .page-header {
+	display: none;
+}
+
+fieldset.group-identificacao {
+   margin-top: 100px;
+}
+
+/*
+fieldset.required-fields.group-identificacao {
+   margin-top: 120px;
+}*/
+
+/*
+fieldset.required-fields.group-dependentes,
+fieldset.required-fields.group-acoes {
+   margin-top: 160px;
+}*/
+
+
+fieldset.group-complementares,
+fieldset.group-dependentes,
+fieldset.group-acoes {
+   margin-top: 160px;
+}
+/*
+.view-mode-full fieldset.group-midiassociais .panel-body .field,
+.view-mode-full fieldset.group-midiassociais .panel-body  .field {
+ 	width: 45%;
+}*/
+
+form .field-multiple-table td.field-multiple-drag {
+	display:none;
+}
+
+.group-pensionista {
+  page-break-after: always;
+}
+
+.group-midiassociais {
+  page-break-after: always;
+}
+
+.group-acoes {
+  page-break-before: always;
+}
+
+
+.assinatura {
+	display: block;
+}
+.messages,
+.alert,
+.alert-block,
+.alert-dismissible, 
+.alert-success,
+.status {
+	display: none;
+}

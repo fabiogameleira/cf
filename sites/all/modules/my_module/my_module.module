@@ -1,0 +1,1367 @@
+<?php
+
+/**
+* Ao trocar um usuário com conta pendente para filiado
+* atribui ao autor do filiado com o mesmo título/CPF o nome/cpf do usuario
+* permitindo o usuário passar a editar os dados cadastrais do filiado com o mesmo cpf.
+*/
+function my_module_user_presave(&$edit, $account, $category) {
+
+   //Se não for uma conta nova
+   if (!($account->is_new)) {
+       $usuario = user_load($edit->role);
+	   // Se trocou de papel "conta pendente" para papel "filiado"
+	   if (($edit['roles'][7] == 7) and ($account->roles[10] == "conta pendente")) {
+		   
+				$queryfiliado = new EntityFieldQuery();	
+				$result = $queryfiliado->entityCondition('entity_type', 'node')
+				->entityCondition('bundle', 'filiado')
+				->propertyCondition('title', $account->name)
+				->execute();
+
+				if (!empty($result)){
+					// Achou filiado com o mesmo cpf			
+					$filiados = node_load_multiple(array_keys($result['node']));	
+					foreach ($filiados as $filiado) { 
+						$filiado->uid = $account->uid;
+						node_save($filiado);	  
+					}
+				}
+	   } 
+
+   }
+}
+
+function my_module_form_alter(&$form, &$form_state, $form_id) {
+
+	if ($form_id == "assembleia_node_form") { 
+		  $form['#validate'][] = 'my_module_form_validate_assembleia'; 
+	}
+	
+}
+
+function my_module_form_user_register_form_alter(&$form, &$form_state, $form_id) {
+  $form['#validate'][] = 'my_module_validate_register_form';
+}
+
+function my_module_validate_register_form(&$form, &$form_state) {
+
+  $field = 'name';
+  $value = $form_state['values']['name'];
+  $cpf_result = array();
+  
+  if (is_numeric($value)) {
+      $cpf_result = br_tax_number_cpf_validator($value);
+  }
+  else {
+	  $cpf_result['status'] = 0;
+	  $cpf_result['msg'] = 'Informe apenas números no CPF.';
+  }
+  
+  if (!$cpf_result['status']) {
+	  $msg = $cpf_result['msg'];
+      form_set_error($field, $msg );
+  }
+}
+		
+function my_module_form_validate_assembleia($form, &$form_state) {
+
+   $assembleia = $form['title']['#default_value'];
+   $data_assembleia = date( "d/m/Y h:m:s", strtotime( $form['field_data']['und'][0]['#default_value']['value'] ) );
+   $hoje = date("d/m/Y h:m:s"); 
+   
+   if ($data_assembleia < $hoje) {
+		$queryregistrodepresenca = new EntityFieldQuery();
+	    $result = $queryregistrodepresenca->entityCondition('entity_type', 'node')
+	    ->entityCondition('bundle', 'participacao_assembleia')
+	    ->fieldCondition('field_assembleia', 'value', $assembleia, '=')
+	    ->fieldCondition('field_participa', 'value', 1 , '=')
+	    ->execute();
+
+	    // Se possuir registro de controle de presença não permite troca de dados,
+		// Somente se passar registroso controle de presença para não.
+		if (!empty($result)) {
+		   $msg = 'Assembleia com data e hora menor que a data e hora atual '. $hoje;
+		   $msg = $msg . ' e com registro de presença confirmado.<br>';
+		   $msg = $msg . 'Para excluir a assembleia ou alterar os dados, primeiro ';
+	       $msg = $msg . 'atribua todos os <a href="/registrarpresencaassembleia/'.$assembleia.'" title="Registra/altera presença" >controle de presença</a> para não.';  
+		   form_set_error('field_data', $msg);  
+		}
+   }
+}
+
+function my_module_filiado_pendente() {
+		drupal_get_messages('Acesso não liberado');
+		$_GET['destination'] = 'filiacao-pendente';
+		module_load_include('pages.inc', 'user');
+		//user_logout();
+		drupal_goto('acesso-nao-liberado');
+}
+
+function my_module_conta_pendente() {
+		drupal_get_messages('Acesso não liberado');
+		$_GET['destination'] = 'conta-pendente';
+		module_load_include('pages.inc', 'user');
+		drupal_goto('acesso-nao-liberado');
+		user_logout();
+}
+
+function my_module_user_login(&$edit, $account) {
+
+	
+    //file_put_contents('drupal--debug-user_login.txt', print_r($account, true)); 
+
+	$usuario = $account->uid;
+	//obtem o papel do usuário
+	// Conta nova é "sem filiado" - movido em rules 
+	// **** tratar sem filiado
+	
+		if (array_search("pendente",$account->roles )) {
+			// verifica se o papel é pendente 
+			
+			// e se tem algum filiado com cpf igual ao usuário pendente
+			$queryfiliado = new EntityFieldQuery();	
+			$result = $queryfiliado->entityCondition('entity_type', 'node')
+				->entityCondition('bundle', 'filiado')
+				->propertyCondition('title', $account->name)
+				->execute();
+
+			if (!empty($result)){
+				// O cadastro de filiados está pendente de aprovação
+				$filiados = node_load_multiple(array_keys($result['node']));
+				
+				foreach ($filiados as $filiado) { 
+					  $cpf = $filiado->field_cpf['und'][0]['value'];
+					if ($cpf == $account->name) {
+						
+						my_module_filiado_pendente(); 
+	
+					}
+				
+				}
+			}			
+		}
+		if (array_search("conta pendente",$account->roles )) {
+			my_module_conta_pendente();
+		}
+        
+		if (array_search("sem filiado",$account->roles )) {	
+			global $user;
+			
+			//file_put_contents('drupal--debug-user_insert.txt', print_r($account, true));
+			// Conta nova o usuário é apenas autenticado sem filiado
+			// e se tem algum filiado com cpf igual ao usuário pendente
+			$queryfiliado = new EntityFieldQuery();	
+			$result = $queryfiliado->entityCondition('entity_type', 'node')
+			->entityCondition('bundle', 'filiado')
+			->propertyCondition('title', $account->name)
+			->execute();
+
+			if (!empty($result)){
+				// Achou filiado com o mesmo cpf			
+				$filiados = node_load_multiple(array_keys($result['node']));
+				
+				foreach ($filiados as $filiado) { 
+					  $cpf = $filiado->field_cpf['und'][0]['value'];
+					
+					//file_put_contents('drupal--debug-filiado-encontrado.txt', print_r($filiado, true));
+					
+					if ($cpf == $account->name) {
+						// Seta o Papel Pendente
+						
+						$role = user_role_load_by_name("conta pendente");
+						//$user->roles = $user->roles + array($role->rid => $role->name);
+						$user->roles = array($role->rid => $role->name);
+						user_save($user);
+						my_module_conta_pendente(); 
+					}
+				}
+			}
+		}
+}
+ 
+function my_module_node_postupdate($node) {
+	
+	if ($node->type == 'filiado') {
+		// Bloqueia e desbloqueia a conta do filiado que foi desfiliado
+		$tid_anterior = taxonomy_term_load($node->original->field_situacaofiliado[und][0][tid]);
+		$tid_novo = taxonomy_term_load($node->field_situacaofiliado[und][0][tid]);
+				
+		$situacaosindicalanterior = strtolower($tid_anterior->name);
+		$situacaosindicalnova = strtolower($tid_novo->name);
+		
+		if ($situacaosindicalanterior == "filiado" and $situacaosindicalnova == "desfiliado" ) {
+ 
+				$usuario = user_load($node->uid);
+				if ($usuario->name == $node->title) {
+					$account = $usuario->uid;
+					user_save($usuario, array('status' => 0));
+				}
+		}
+		
+		if ($situacaosindicalanterior == "desfiliado" and $situacaosindicalnova == "filiado" ) {
+ 
+				$usuario = user_load($node->uid);
+				if ($usuario->name == $node->title) { 
+					$account = $usuario->uid;
+					user_save($usuario, array('status' => 1));
+				}
+		}
+		
+		
+    }
+	
+  	if ($node->type =='assembleia') {
+		
+	  $assembleia = $node->title ;	
+	    
+	  $data_assembleia = new DateTime(date( "m/d/Y", strtotime( $node->field_data[und][0][value] ) ));
+	  $hoje = new DateTime("now"); 
+	  
+	  $controle_presenca_original = $node->original->field_controle_presenca[und][0][value];
+	  $controle_presenca_atual = $node->field_controle_presenca[und][0][value];
+	  
+	  $lista_presenca_original = $node->original->field_lista_de_presenca[und][0][value];
+	  $lista_presenca_atual = $node->field_lista_de_presenca[und][0][value];
+	  /* 
+	  $valor = 'Assembleia: '. $assembleia  ;
+	  $valor = $valor . 'Data da assembleia:' . $data_assembleia->format('d/m/Y H:i:s');
+	  $valor = $valor . '|Data hoje:' . $hoje->format('d/m/Y H:i:s');
+	  $valor = $valor . '|Controle de presença original:' .$controle_presenca_original;
+	  $valor = $valor . '|Controle de presença atual:' .$controle_presenca_atual; 
+	  $valor = $valor . '|Lista de presença original:' .$lista_presenca_original;
+	  $valor = $valor . '|lista de presença atual:' .$lista_presenca_atual; 
+      file_put_contents('drupal--debug-valor.txt', print_r($valor, true)); 
+	  */
+	  // TRATA TROCA DO CONTROLE DE PRESENCA
+	  /*
+	    if ($controle_presenca_original != $controle_presenca_atual ) {
+		   
+		  switch ($controle_presenca_atual) {
+			  
+			  case 1: // Sim
+						//if ($data_assembleia >= $hoje) {
+						//	my_module_apaga_lista_de_presenca($assembleia);	
+						//	my_module_cria_lista_de_presenca ($node);							
+						//}
+				break;
+			  case 0:		
+						//if ($data_assembleia >= $hoje) {
+						//	my_module_apaga_lista_de_presenca($assembleia);			
+						//}
+				break;
+			  default:	
+				break;
+			
+			}
+		} */
+		//else {
+			
+		// TRATA TROCA DO LISTA DE PRESENCA	 
+		if ($lista_presenca_original != $lista_presenca_atual ) {
+		   
+			switch ($lista_presenca_atual) {
+			  case 1: // Sim
+						if ($data_assembleia >= $hoje) {
+							my_module_apaga_lista_de_presenca($assembleia);
+							my_module_cria_lista_de_presenca ($node);	
+                        }						
+				break;
+			  case 0:
+						if ($data_assembleia >= $hoje) {
+							my_module_apaga_lista_de_presenca($assembleia);			
+						}
+				break;
+			  default:	
+
+				break;
+			
+			}
+		}
+		//}
+
+	}
+}
+
+/* EXCLUI LISTA DE PRESENÇA */
+function my_module_apaga_lista_de_presenca ($assembleia) {
+	
+	$queryparticipacao = new EntityFieldQuery();
+	$result = $queryparticipacao->entityCondition('entity_type', 'node')
+	->entityCondition('bundle', 'participacao_assembleia')
+	->fieldCondition('field_assembleia', 'value', $assembleia, '=')
+	->execute();
+
+	$participacoes = node_load_multiple(array_keys($result['node']));
+	foreach ($participacoes as $participacao) { 
+		node_delete($participacao->nid);
+	}	
+}
+
+/* EXCLUI LISTA DE PRESENÇA SE ASSEMBLEIA FOI EXCLUÍDA */
+
+function my_module_node_postdelete($node) {
+
+  	if ($node->type =='assembleia') {
+		$assembleia = $node->title ;
+	    my_module_apaga_lista_de_presenca ($assembleia);
+	}
+}
+
+/* CRIAR LISTA DE PRESENÇA */
+function my_module_cria_lista_de_presenca ($node) {
+	
+		global $user;
+		
+		 //Guarda código da assembleia;
+
+		 $assembleia = $node->title;
+		 
+		 // Criar array de situação do filiado para o qual a assembleia foi definida
+		 // Ativo ou Pensionista ou Aposentado
+		 
+		 $qualsituacao = array();
+		 //$pensionista = $node->field_pensionista[0][value];
+		 //$aposentado = $node->field_aposentado[und][0][value];
+		 
+		 //If ($ativo == 1 ) {
+			 //$termoativo = reset(taxonomy_get_term_by_name('Ativo'));
+			 $termoativo = reset(taxonomy_get_term_by_name('Filiado'));
+			 $qualsituacao[] = $termoativo->tid ;
+		 //}
+
+		 //file_put_contents('drupal--debug-situacao.txt', print_r($qualsituacao, true));
+		 
+		 // obtem filiados para gravar a participação
+		 $queryfiliado = new EntityFieldQuery();
+		 $result = $queryfiliado->entityCondition('entity_type', 'node')
+			->entityCondition('bundle', 'filiado')
+			->propertyCondition('status', NODE_PUBLISHED)
+			->fieldCondition('field_situacaofiliado', 'tid', $qualsituacao)
+			->execute();
+		 $filiados = node_load_multiple(array_keys($result['node']));
+		 
+		 // Cria lista de presença com base em Filiados existentes
+		 
+		 foreach ($filiados as $filiado) {
+		 
+		    // Verifica se a conta de usuário do filiado está pendente
+			// Se estiver, o filiado não entra na lista de presença
+
+			$usuario = user_load($filiado->uid);	
+			$qtdroles = sizeof($usuario->roles);
+			$papeldousuario = array_search("pendente",$usuario->roles );
+			
+			// Se o papel do usuário que criou o filiado não for pendente
+			// Grava o filiado na lista de participação
+			if (!$papeldousuario) {	 
+				$cpf = $filiado->field_cpf['und'][0]['value'];
+				$id  = $filiado->nid;
+				$titulo = $assembleia .'-'. $id;
+				$filiado->field_idcpf['und'][0]['target_id'] = $id;
+				$refcpf = $filiado->field_idcpf['und'][0]['target_id'];
+				
+				$filiado->field_idassembleia['und'][0]['target_id'] = $node->nid;
+				$refassembleia = $filiado->field_idassembleia['und'][0]['target_id'];
+					
+				// Use the Entity API to create a new object
+				$values = array(
+				  'type' => 'participacao_assembleia',
+				  'uid' => $user->uid,
+				  'status' => 1,
+				  'promote' => 0,
+				);
+				
+				$entity = entity_create('node', $values);
+                
+				// Then create an entity_metadata_wrapper around the new entity.
+				$wrapper = entity_metadata_wrapper('node', $entity);
+
+				// Now assign values through the wrapper.
+				$wrapper->title->set($titulo);
+
+				$wrapper->field_idcpf->set($refcpf);
+				$wrapper->field_cpf->set($cpf);
+				$wrapper->field_idassembleia->set($refassembleia);
+				$wrapper->field_assembleia->set($assembleia);
+				
+				// Finally save the node.
+				$wrapper->save();
+			}
+		  }
+}
+
+
+function my_module_node_postinsert($node) {
+   //watchdog('hook_post_action_test', "The inserted node {$node->type} id is {$node->nid} from " . __FUNCTION__);
+   //file_put_contents('drupal--debug.txt', print_r($node, true));
+   
+    //if ($node->type =='assembleia') {
+	//	my_module_cria_lista_de_presenca ($node);
+    //}
+	
+	if ($node->type =='filiado') {	
+		// file_put_contents('drupal--debug.txt', print_r($node, true));
+		$user = user_load($node->uid);	
+		
+		// Se ao inserir um filiado o papel do autor = sem filiado
+		// Seta pendente para o papel
+		// remove papel sem filiado
+		
+		if (array_search("sem filiado",$user->roles )) {	
+			$role = user_role_load_by_name("pendente");
+			$user->roles = array($role->rid => $role->name);
+			user_save($user);
+			my_module_filiado_pendente();
+		}
+	}
+	
+}
+ 
+/**
+ * Implements hook_node_update().
+ */
+ 
+function my_module_views_pre_render(&$view) {
+
+  // Scramble the order of the rows shown on this result page.
+  // Note that this could be done earlier, but not later in the view execution
+  // process.
+  //shuffle($view->result);
+
+  
+  if ($view->name == "estatistica_por_faixa_etaria") {
+	  $i = 0;
+	  $n = 0 ;
+	  $n20 = 0;
+	  $n30 = 0;
+	  $n40 = 0;
+	  $n50 = 0;
+	  $n60 = 0;
+	  $n70 = 0;
+	  $n80 = 0;
+	  $n90 = 0;
+	  $nerro = 0;
+	  $idade = 0;
+      $linha = '';
+	  $situacao ='';
+	  $sexo = '';
+	  $calc = array();
+	  $quebra = 0;
+	  
+	  foreach($view->result as $r => &$result) {
+		  
+		if (isset($result->field_field_data_de_nascimento[0]['rendered']['#markup'])) {
+			$idade = strip_tags($result->field_field_data_de_nascimento[0]['rendered']['#markup']);
+			$idade = str_replace(" anos","",$idade);
+		}
+		
+		if (!empty($idade)) {
+			$idade = intval($idade/10).'0';
+			$idade = $idade;
+        } else	{				
+		   $idade = 0;
+		} 
+
+		//$result->field_field_data_de_nascimento[0]['rendered']['#markup'] = $idade;
+		
+		if ($i > 0) {
+           if ($situacao == $result->field_field_situacaofiliado[0]['rendered']['#markup']) {
+			   if ($sexo == $result->field_field_sexo[0]['rendered']['#markup']) {
+                    $i = $i - 1;		
+					$calc[$i]["situacao"] = $result->field_field_situacaofiliado[0]['rendered']['#markup'];
+					$calc[$i]["sexo"] = $result->field_field_sexo[0]['rendered']['#markup'];
+					$calc[$i]["Até 20"] = $n20;      
+					$calc[$i]["Até 30"] = $n30;		
+					$calc[$i]["Até 40"] = $n40;        
+					$calc[$i]["Até 50"] = $n50;
+					$calc[$i]["Até 60"] = $n60;
+					$calc[$i]["Até 70"] = $n70; 	
+					$calc[$i]["Até 80"] = $n80;
+					$calc[$i]["Até 90"] = $n90;
+					$calc[$i]["Erro"]   = $nerro;
+					
+			   }
+			   else {
+
+				//dpm('--- quebra sexo ---');
+				$calc[$i]["situacao"] = $result->field_field_situacaofiliado[0]['rendered']['#markup'];
+				$calc[$i]["sexo"] = $result->field_field_sexo[0]['rendered']['#markup'];	
+				$calc[$i]["Até 20"] = 0;      
+				$calc[$i]["Até 30"] = 0;		
+				$calc[$i]["Até 40"] = 0;        
+				$calc[$i]["Até 50"] = 0;
+				$calc[$i]["Até 60"] = 0;
+				$calc[$i]["Até 70"] = 0; 	
+				$calc[$i]["Até 80"] = 0;
+				$calc[$i]["Até 90"] = 0;
+				$calc[$i]["Erro"]   = 0;
+				$n20 = 0; $n30 = 0; $n40 = 0; $n50 = 0; 
+				$n60 = 0; $n70 = 0; $n80 = 0; $n90 = 0; 
+				$nerro = 0;
+				
+			   }
+           } else { 
+
+		        //dpm('--- quebra situação ---');
+				$calc[$i]["situacao"] = $result->field_field_situacaofiliado[0]['rendered']['#markup'];
+				$calc[$i]["sexo"] = $result->field_field_sexo[0]['rendered']['#markup'];	
+				$calc[$i]["Até 20"] = 0;      
+				$calc[$i]["Até 30"] = 0;		
+				$calc[$i]["Até 40"] = 0;        
+				$calc[$i]["Até 50"] = 0;
+				$calc[$i]["Até 60"] = 0;
+				$calc[$i]["Até 70"] = 0; 	
+				$calc[$i]["Até 80"] = 0;
+				$calc[$i]["Até 90"] = 0;
+				$calc[$i]["Erro"]   = 0;
+				$n20 = 0; $n30 = 0; $n40 = 0; $n50 = 0; 
+				$n60 = 0; $n70 = 0; $n80 = 0; $n90 = 0; 
+				$nerro = 0;
+		   }
+		} else {
+			//dpm('---Início---');
+			$calc[$i]["situacao"] = $result->field_field_situacaofiliado[0]['rendered']['#markup'];
+			$calc[$i]["sexo"] = $result->field_field_sexo[0]['rendered']['#markup'];
+			$calc[$i]["Até 20"] = 0;      
+			$calc[$i]["Até 30"] = 0;		
+			$calc[$i]["Até 40"] = 0;        
+			$calc[$i]["Até 50"] = 0;
+			$calc[$i]["Até 60"] = 0;
+			$calc[$i]["Até 70"] = 0; 	
+			$calc[$i]["Até 80"] = 0;
+			$calc[$i]["Até 90"] = 0;
+			$calc[$i]["Erro"]   = 0;			
+		}
+		
+		switch ($idade) {
+		  case 20:       
+            $n20 = $n20 + 1	;	  
+		    $calc[$i]["Até 20"] = $n20;      
+			break;
+		  case 30:
+		    $n30 = $n30 + 1;	
+		    $calc[$i]["Até 30"] = $n30; 	
+			break;
+		  case 40:
+		  	$n40 = $n40 + 1;
+		    $calc[$i]["Até 40"] = $n40; 			
+			break;
+		  case 50:
+		  	$n50 = $n50 + 1;
+		    $calc[$i]["Até 50"] = $n50; 			
+			break;
+		  case 60:
+		  	$n60 = $n60 + 1;
+		    $calc[$i]["Até 60"] = $n60; 			
+			break;	
+		  case 70:
+		    $n70 = $n70 + 1;
+		    $calc[$i]["Até 70"] = $n70; 
+			break;	
+		  case 80:
+		  	$n80 = $n80 + 1;
+			$calc[$i]["Até 80"] = $n80;				
+			break;	
+		  case 90:
+		  	$n90 = $n90 + 1;
+			$calc[$i]["Até 90"] = $n90; 
+			break;	
+          default:	
+		    $nerro = $nerro + 1;
+		    $calc[$i]["Erro"] = $nerro;
+			break;		  
+		}
+		$situacao = $calc[$i]["situacao"];
+		$sexo = $calc[$i]["sexo"];
+		/*
+		$linha = "[".$i."] ". $calc[$i]["situacao"] .'/'. $calc[$i]["sexo"];
+		$linha = $linha . ' 20=>' . $calc[$i]["Até 20"];
+		$linha = $linha . '| 30=>' . $calc[$i]["Até 30"];
+		$linha = $linha . '| 40=>' . $calc[$i]["Até 40"];
+		$linha = $linha . '| 50=>' . $calc[$i]["Até 50"];
+		$linha = $linha . '| 60=>' . $calc[$i]["Até 60"];
+		$linha = $linha . '| 70=>' . $calc[$i]["Até 70"];
+		$linha = $linha . '| 80=>' . $calc[$i]["Até 80"];
+		$linha = $linha . '| 90=>' . $calc[$i]["Até 90"];
+		$linha = $linha . '| er=>' . $calc[$i]["Erro"];
+		$linha = $linha . '| idade=>' . $idade;
+		//dpm($linha);
+		*/
+		$i = $i + 1;
+
+      }
+	  //dpm($linha);
+	  $i = 0;
+      $tamCalc = sizeof($calc);
+	  $total = 0;	
+
+      
+	  //Preenche result com conteúdo do array agrupado.
+	  foreach($view->result as $r => &$result) {
+		
+			$result->field_field_situacaofiliado[0]['rendered']['#markup'] = $calc[$i]["situacao"];
+			$result->field_field_sexo[0]['rendered']['#markup'] = $calc[$i]["sexo"] ;
+			$result->field_field_data_de_nascimento[0]['rendered']['#markup']  = $calc[$i]["Até 20"];
+ 			$result->field_field_data_de_nascimento_1[0]['rendered']['#markup'] = $calc[$i]["Até 30"];	
+			$result->field_field_data_de_nascimento_2[0]['rendered']['#markup'] = $calc[$i]["Até 40"];
+			$result->field_field_data_de_nascimento_3[0]['rendered']['#markup'] = $calc[$i]["Até 50"];
+			$result->field_field_data_de_nascimento_4[0]['rendered']['#markup'] = $calc[$i]["Até 60"];
+			$result->field_field_data_de_nascimento_5[0]['rendered']['#markup'] = $calc[$i]["Até 70"];
+			$result->field_field_data_de_nascimento_6[0]['rendered']['#markup'] = $calc[$i]["Até 80"];
+			$result->field_field_data_de_nascimento_7[0]['rendered']['#markup'] = $calc[$i]["Até 90"];
+			$result->field_field_data_de_nascimento_8[0]['rendered']['#markup'] = $calc[$i]["Erro"];
+			$total = $calc[$i]["Até 20"] + $calc[$i]["Até 30"] + $calc[$i]["Até 40"] + $calc[$i]["Até 50"] + $calc[$i]["Até 60"];
+			$total = $total + $calc[$i]["Até 70"] + $calc[$i]["Até 80"]+ $calc[$i]["Até 90"] + $calc[$i]["Erro"];
+			$result->field_field_data_de_nascimento_9[0]['rendered']['#markup'] = $total;
+
+		if ( $i < ($tamCalc) ) {
+			$i = $i + 1 ;	
+		}
+		else {	
+		 // Elimina results não usados.
+		   $i = $i + 1 ;
+           unset($view->result[$r]);
+		}
+		
+	  }
+
+  }
+
+}
+
+function my_module_node_presave($node) {
+    	
+	if ($node->type == 'contrato_de_consignacao') {
+
+        //Obtem cpf do filiado
+		$uid_filiado = $node->field_ref_cpf_do_filiado['und'][0]['target_id'];
+		$filiado = node_load($uid_filiado);    
+	    //Graca cpf no campo cpf
+		$node->field_cpf['und'][0]['value'] = $filiado->field_cpf['und'][0]['value'];
+    }		
+}
+
+
+/**
+ * Implements hook_field_attach_view_alter().
+ *
+ * Show titles of empty fields.
+
+function my_module_field_attach_view_alter(&$output, $context) {
+  // We proceed only on nodes.
+  
+  if ($context['entity_type'] != 'node' || $context['view_mode'] != 'full'	) {
+    return;
+  }
+ 
+  $node = $context['entity'];
+  // Load all instances of the fields for the node.
+  $instances = _field_invoke_get_instances('node', $node->type, array('default' => TRUE, 'deleted' => FALSE));
+ 
+  foreach ($instances as $field_name => $instance) {
+    // Set content for fields they are empty.
+    if (empty($node->{$field_name})) {
+      $display = field_get_display($instance, 'full', $node);
+      // Do not add field that is hidden in current display.
+      if ($display['type'] == 'hidden') {
+        continue;
+      }
+      // Load field settings.
+      $field = field_info_field($field_name);
+      // Set output for field.
+      $output[$field_name] = array(
+        '#theme' => 'field',
+        '#title' => $instance['label'],
+        '#label_display' => 'above',
+        '#field_type' => $field['type'],
+        '#field_name' => $field_name,
+        '#bundle' => $node->type,
+        '#object' => $node,
+        '#items' => array(),
+        '#entity_type' => 'node',
+        '#weight' => $display['weight'],
+        0 => array('#markup' => '&nbsp;'),
+      );
+    }
+  }
+}
+ */
+function my_module_feeds_after_parse(FeedsSource $source, FeedsParserResult $result) {
+   
+   if ($source->id == 'importar_acoes') {
+      //[node:field-data:raw]
+	  $linha ='';
+	  $n = 0;
+      foreach($result->items as $item_key) {
+		  
+		$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_inicio']));
+		$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+		$item_key['dt_inicio'] = $data;	
+		$result->items[$n]['dt_inicio'] = $item_key['dt_inicio']; 		
+		$n++;
+		  
+	  }
+   }
+
+   if ($source->id == 'importar_assembleias') {
+      //[node:field-data:raw]
+	  //$linha ='';
+	  $n = 0;
+      foreach($result->items as $item_key) {
+		  
+		$hora = substr($item_key['hr_assembleia'], -8);  		  
+		$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_assembleia']));
+		$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+		$data = $data.' '.$hora;	
+		$item_key['dt_assembleia'] = $data;	
+		
+		$result->items[$n]['dt_assembleia'] = $item_key['dt_assembleia']; 
+        
+		//dpm($data);
+		//dpm($hora);
+		//dpm($item_key['dt_assembleia']);
+		//dpm($item_key['te_assunto']);
+
+		//dpm('-------------------------------------------');
+		  
+		//$linha = $item_key['dt_assembleia'] . ' | ';
+		//$linha = $linha . $item_key['nm_local'] .' | ';
+		//$linha = $linha . $item_key['te_assunto'].' | ';
+		//$linha = $linha . $item_key['n_Controle_Presenca'];
+		//dpm($linha);
+		$n++;
+		  
+	  }
+   }
+
+	if ($source->id == 'importar_acoes_filiado') {
+		$n=0;
+
+		// Para cada filiado lido do arquivo CSV
+		foreach($result->items as $item_key) {
+
+            //dpm('--------- Lido -----------');
+			//dpm($item_key['nome_acao']);
+			//dpm($item_key['cpf_filiado']);
+			//dpm($item_key['nome_filiado']);	
+			//Obter o id da acao com base no Nome_Acao lido 
+            //mover o field_idacao para o filiado
+			$queryacao = new EntityFieldQuery();	
+			$acao = $queryacao->entityCondition('entity_type', 'node')
+			->entityCondition('bundle', 'acoes')
+			->propertyCondition('title', $item_key['nome_acao'])
+			->execute();
+			
+			if (!empty($acao)){
+				//dpm('--------- Acao encontrada -----------');
+				$result->items[$n]['nome_acao'] = array();
+				$participacoes = node_load_multiple(array_keys($acao['node']));
+				foreach ($participacoes as $participacao) { 
+					// encontrou a ação, move field_idacao para filiado
+					//dpm('mover field_idacao para filiado' );
+					//dpm($participacao->title);
+					//dpm($participacao->nid);
+					// Está movendo apenas a última ocorrencia
+					// Precisa adicionar um novo item novo no campo field_idacao do node 
+					
+					//OBTER O NODE DO FILIADO E CRIAR UM NOVO ITEM DE ACAO
+					
+					$queryfiliado = new EntityFieldQuery();	
+					$resultfiliado = $queryfiliado->entityCondition('entity_type', 'node')
+						->entityCondition('bundle', 'filiado')
+						->propertyCondition('title', $item_key['cpf_filiado'])
+						->execute();
+					//dpm('Encontra filiado');
+                    //dpm($item_key['cpf_filiado']);
+
+					if (!empty($resultfiliado)){
+						
+						$filiados = node_load_multiple(array_keys($resultfiliado['node']));
+						foreach ($filiados as $filiado) {
+							//dpm($filiado);
+							//dpm($filiado->field_idacao);
+						    $filiado->field_idacao['und'][$n]['target_id'] = $participacao->nid;
+							//dpm($filiado->field_idacao['und'][$n]['target_id']);
+							//dpm($filiado->field_idacao);
+                            node_save($filiado);	
+							//dpm($filiado->field['und'][$n]);
+							unset($item_key['nome_acao']);
+							unset($result->items[$n]['nome_acao']);							
+						}
+					}			
+
+					//$result->items[$n]['nome_acao'] = $participacao->nid; 
+					//$result->items[$n]['nome_acao'] = $participacao->nid;
+					//dpm($result->items[$n]['nome_acao']);
+				}
+			}
+	        $n++;
+		} 
+	
+    }
+
+	if ($source->id == 'importar_consignacoes_servidor_d8') {
+		$n=0;
+		
+		$feedSource = feeds_source('importar_consignacoes_servidor_d8');
+        $arquivo = $feedSource->config["FeedsFileFetcher"]["source"];
+		
+		//if(strpos($arquivo, 'Servidor') == false) {
+        //   drupal_get_messages('Arquivo inválido');
+		//   unset($result);
+        // }
+	   	// SIAPNet_202010_servidor.txt
+		
+		$competencia = substr ($arquivo ,24,6);
+		
+		foreach($result->items as $item_key) {
+
+			// Código do Órgão N(005)
+			$codigo_do_orgao             = substr ($item_key[0],0,5);
+			// Matrícula do Servidor N(007)
+			$matricula_pen_ser           = substr ($item_key[0] ,5,7);
+			// Código da UPAG N(009)
+			$codigo_upag_pensionista     = substr ($item_key[0],12,9);
+			// UF da UPAG do Servidor A(002)
+			$uf_upag_pensionista         = substr ($item_key[0],21,2);
+			// Nome do Servidor A(050)
+			$nome_da_pensionista         = substr ($item_key[0] ,23,50);
+			//CPF do Servidor  N(011)
+			$cpf_pensionista             = substr ($item_key[0] ,73,11);
+			// Código da Rubrica Autorizada N(005)
+			$codigo_da_rubrica_autoriza  = substr ($item_key[0] ,84,5);
+			// Sequência da Rubrica N(001)
+			$sequencia_rubrica           = substr ($item_key[0] ,89,1);
+			// Valor da Rubrica N(9,2)
+			$val_rubrica                 = strval(substr ($item_key[0] ,90,11)/100);
+			$val_rubrica = number_format($val_rubrica ,2,".","");
+			//Prazo da Rubrica N(003)
+			$prazo_da_rubrica            = substr ($item_key[0] ,101,3);
+			//Código da UG-SIAFI N(006)
+			$codigo_da_ug_siafi          = substr ($item_key[0] ,104,6);
+			//Categoria do Servidor A(012)
+			$categoria_da_pensionista    = substr ($item_key[0] ,110,12);
+			//Número do Contrato na Consignatária A(020)
+			$numero_contrato             = substr ($item_key[0] ,122,20);
+			//Assunto Calculo N(02)
+			$assunto_calculo             = substr ($item_key[0] ,142,2);
+			//Percentual N(05)
+			$percentual                  = substr ($item_key[0] ,144,5);
+			//$competencia                 = date("Ym");
+            $data_importacao             = date("Y/m/d h:m:s");
+			$tipo_de_consignacao = 'Servidor';
+			
+			// Move data de publicação original
+			//AAAA-MM-DD HH:MM
+			//2020-11-18 14:27:00
+			
+			$result->items[$n]['titulo']                     = $numero_contrato;
+			$result->items[$n]['codigo_do_orgao']            = $codigo_do_orgao;
+			$result->items[$n]['matricula_pen_ser']          = $matricula_pen_ser;
+			$result->items[$n]['codigo_upag_pensionista']    = $codigo_upag_pensionista;   
+			$result->items[$n]['uf_upag_pensionista']        = $uf_upag_pensionista;     
+			$result->items[$n]['nome_da_pensionista']        = $nome_da_pensionista; 
+			$result->items[$n]['cpf_pensionista']            = $cpf_pensionista;         
+			$result->items[$n]['codigo_da_rubrica_autoriza'] = $codigo_da_rubrica_autoriza; 
+			$result->items[$n]['sequencia_rubrica']          = $sequencia_rubrica;       
+			$result->items[$n]['val_rubrica']                = $val_rubrica;      
+			$result->items[$n]['prazo_da_rubrica']           = $prazo_da_rubrica;    
+			$result->items[$n]['codigo_da_ug_siafi']         = $codigo_da_ug_siafi;      
+			$result->items[$n]['categoria_da_pensionista']   = $categoria_da_pensionista; 
+			$result->items[$n]['numero_contrato']            = $numero_contrato;  
+			$result->items[$n]['assunto_calculo']            = $assunto_calculo;  
+			$result->items[$n]['percentual']                 = $percentual;
+			$result->items[$n]['competencia']                = $competencia;
+			$result->items[$n]['data_importacao']            = $data_importacao;
+			$result->items[$n]['tipo_de_consignacao']        = $tipo_de_consignacao;
+	        $n++;
+		} 
+	
+    }
+
+	if ($source->id == 'importar_consignacoes_pensionista_d8') {
+		$n=0;
+		
+		$feedSource = feeds_source('importar_consignacoes_pensionista_d8');
+        $arquivo = $feedSource->config["FeedsFileFetcher"]["source"];
+		
+		//SIAPNet_202010_pensionista.txt
+		
+		$competencia = substr ($arquivo ,24,6);
+		
+		foreach($result->items as $item_key) {
+
+			// Código do Órgão N(005)
+			$codigo_do_orgao             = substr ($item_key[0],0,5);
+			// Matrícula do Instituidor de Pensão N(007)
+			$matricula_instituidor       = substr ($item_key[0] ,5,7);
+			// Matrícula do pensionista N(008)
+			$matricula_pen_ser           = substr ($item_key[0] ,12,8);
+			// Código da UPAG N(009)
+			$codigo_upag_pensionista     = substr ($item_key[0],20,9);
+			// UF da UPAG do pensionista A(002)
+			$uf_upag_pensionista         = substr ($item_key[0],29,2);
+			// Nome do pensionista A(050)
+			$nome_da_pensionista         = substr ($item_key[0] ,31,45);
+			//CPF do pensionista  N(011)
+			$cpf_pensionista             = substr ($item_key[0] ,76,11);
+			// Código da Rubrica Autorizada N(005)
+			$codigo_da_rubrica_autoriza  = substr ($item_key[0] ,87,5);
+			// Sequência da Rubrica N(001)
+			$sequencia_rubrica           = substr ($item_key[0] ,92,1);
+			// Valor da Rubrica N(9,2)
+			$val_rubrica                 = strval(substr ($item_key[0] ,93,11))/100;
+			$val_rubrica = number_format($val_rubrica ,2,".","");
+			//Prazo da Rubrica N(003)
+			$prazo_da_rubrica            = substr ($item_key[0] ,104,3);
+			//Código da UG-SIAFI N(006)
+			$codigo_da_ug_siafi          = substr ($item_key[0] ,107,6);
+			//Categoria do Servidor A(012)
+			$categoria_da_pensionista    = substr ($item_key[0] ,113,12);
+			//Número do Contrato na Consignatária A(020)
+			$numero_contrato             = substr ($item_key[0] ,125,20);
+			//Assunto Calculo N(02)
+			$assunto_calculo             = substr ($item_key[0] ,145,2);
+			//Percentual N(05)
+			$percentual                  = substr ($item_key[0] ,147,5);
+			//$competencia                 = date("Ym");
+            $data_importacao             = date("Y/m/d h:m:s");
+			//$tipo_de_consignacao 
+			$tipo_de_consignacao = 'Pensionista';		
+			
+			$result->items[$n]['titulo']                     = $numero_contrato;
+			$result->items[$n]['codigo_do_orgao']            = $codigo_do_orgao;
+			$result->items[$n]['matricula_instituidor']      = $matricula_instituidor;			
+			$result->items[$n]['matricula_pen_ser']          = $matricula_pen_ser;
+			$result->items[$n]['codigo_upag_pensionista']    = $codigo_upag_pensionista;   
+			$result->items[$n]['uf_upag_pensionista']        = $uf_upag_pensionista;     
+			$result->items[$n]['nome_da_pensionista']        = $nome_da_pensionista; 
+			$result->items[$n]['cpf_pensionista']            = $cpf_pensionista;         
+			$result->items[$n]['codigo_da_rubrica_autoriza'] = $codigo_da_rubrica_autoriza; 
+			$result->items[$n]['sequencia_rubrica']          = $sequencia_rubrica;         
+			$result->items[$n]['val_rubrica']                = $val_rubrica; 	
+			$result->items[$n]['prazo_da_rubrica']           = $prazo_da_rubrica;    
+			$result->items[$n]['codigo_da_ug_siafi']         = $codigo_da_ug_siafi;      
+			$result->items[$n]['categoria_da_pensionista']   = $categoria_da_pensionista; 
+			$result->items[$n]['numero_contrato']            = $numero_contrato;  
+			$result->items[$n]['assunto_calculo']            = $assunto_calculo;  
+			$result->items[$n]['percentual']                 = $percentual;
+			$result->items[$n]['competencia']                = $competencia;
+			$result->items[$n]['data_importacao']            = $data_importacao;	
+			$result->items[$n]['tipo_de_consignacao']        = $tipo_de_consignacao;			
+	        $n++;
+		} 
+	
+    }	
+	
+	if ($source->id == 'importar_filiados') {
+		$n=0;
+		foreach($result->items as $item_key) {
+          		  
+		    /* COVERTE DATAS */
+			// Data de Nascimento
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_nascimento']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_nascimento'] = $data;	
+				$result->items[$n]['dt_nascimento'] = $item_key['dt_nascimento'];
+				
+			// Data de dt_identidade_exp
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_identidade_exp']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_identidade_exp'] = $data;	
+				$result->items[$n]['dt_identidade_exp'] = $item_key['dt_identidade_exp'];
+				
+			// Data de dt_aposentadoria
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_aposentadoria']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_aposentadoria'] = $data;	
+				$result->items[$n]['dt_aposentadoria'] = $item_key['dt_aposentadoria'];
+				
+			// Data de dt_aposentadoria_1
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_aposentadoria_1']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_aposentadoria_1'] = $data;	
+				$result->items[$n]['dt_aposentadoria_1'] = $item_key['dt_aposentadoria_1'];
+				
+			// Data de dt_desligamento
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_desligamento']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_desligamento'] = $data;	
+				$result->items[$n]['dt_desligamento'] = $item_key['dt_desligamento'];
+				
+			// Data de dt_admissao
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_admissao']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_admissao'] = $data;	
+				$result->items[$n]['dt_admissao'] = $item_key['dt_admissao'];
+
+			// Data de dt_inscricao
+				$data = explode('/',str_replace(" 00:00:00","",$item_key['dt_inscricao']));
+				$data = $data[1] . '/' . $data[0] . '/' . $data[2]; 
+				$item_key['dt_inscricao'] = $data;	
+				$result->items[$n]['dt_inscricao'] = $item_key['dt_inscricao'];				
+				
+			/* ESTADO CIVIL */	
+			switch ($item_key['cs_estado_civil']) {
+			  case 'C':
+				$item_key['cs_estado_civil'] = str_replace('C','Casado(a)',$item_key['cs_estado_civil']);	
+				$result->items[$n]['cs_estado_civil'] =   $item_key['cs_estado_civil'];	
+				break;
+			  case 'Q':
+				$item_key['cs_estado_civil'] = str_replace( 'Q','Desquitado(a)', $item_key['cs_estado_civil']);						
+				$result->items[$n]['cs_estado_civil'] =  $item_key['cs_estado_civil'];		
+				break;	
+			  case 'D':
+				$item_key['cs_estado_civil'] = str_replace( 'D','Divorciado(a)', $item_key['cs_estado_civil']);						
+				$result->items[$n]['cs_estado_civil'] =  $item_key['cs_estado_civil'];		
+				break;	
+			  case 'S':
+				$item_key['cs_estado_civil'] = str_replace( 'S','Solteiro(a)', $item_key['cs_estado_civil']);						
+				$result->items[$n]['cs_estado_civil'] =  $item_key['cs_estado_civil'];		
+				break;
+			  case 'V':
+				$item_key['cs_estado_civil'] = str_replace( 'V','Viúvo(a)', $item_key['cs_estado_civil']);						
+				$result->items[$n]['cs_estado_civil'] =  $item_key['cs_estado_civil'];		
+				break;				
+			  default:	
+				$item_key['cs_estado_civil'] = 'Outros';						
+				$result->items[$n]['cs_estado_civil'] =  $item_key['cs_estado_civil'];
+				break;		  
+			}	
+			
+			
+			/* AREA */	
+			switch ($item_key['cs_area']) {
+			  case 'A':
+				$item_key['cs_area'] = str_replace('A','Administrativo',$item_key['cs_area']);	
+				$result->items[$n]['cs_area'] =   $item_key['cs_area'];	
+				break;
+			  case 'D':
+				$item_key['cs_area'] = str_replace( 'D','Docente', $item_key['cs_area']);						
+				$result->items[$n]['cs_area'] =  $item_key['cs_area'];		
+				break;		
+			  default:	
+				$item_key['cs_area'] = 'Outro';						
+				$result->items[$n]['cs_area'] =  $item_key['cs_area'];
+				break;		  
+			}			
+			
+			/* sexo */	
+			switch ($item_key['cs_sexo']) {
+			  case 'M':
+				$item_key['cs_sexo'] = str_replace('M','Masculino',$item_key['cs_sexo']);	
+				$result->items[$n]['cs_sexo'] =   $item_key['cs_sexo'];	
+				break;
+			  case 'F':
+				$item_key['cs_sexo'] = str_replace( 'F','Feminino', $item_key['cs_sexo']);						
+				$result->items[$n]['cs_sexo'] =  $item_key['cs_sexo'];		
+				break;		
+			  default:	
+				$item_key['cs_sexo'] = 'Outro';						
+				$result->items[$n]['cs_sexo'] =  $item_key['cs_sexo'];
+				break;		  
+			}	
+			/* ESCOLARIDADE 
+			 Fundamental completo
+			 Fundamental incompleto
+			 Médio incompleto			 
+			 Médio completo
+			 Superior incompleto			 
+			 Superior completo
+			 Especialização			 
+			 Mestrado
+			 Não Informado			 
+			*/
+			switch ($item_key['cs_escolaridade']) {
+			  case '2':
+				$item_key['cs_escolaridade'] = str_replace( '2','Fundamental completo', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '1':
+				$item_key['cs_escolaridade'] = str_replace( '1', 'Fundamental incompleto',$item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '3':
+				$item_key['cs_escolaridade'] = str_replace( '3', 'Médio incompleto',$item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '4':
+				$item_key['cs_escolaridade'] = str_replace( '4','Médio completo', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '5':
+				$item_key['cs_escolaridade'] = str_replace( '5','Superior incompleto', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '6':
+				$item_key['cs_escolaridade'] = str_replace( '6','Superior completo', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;	
+			  case '9':
+				$item_key['cs_escolaridade'] = str_replace( '9','Especialização', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;
+			  case '7':
+				$item_key['cs_escolaridade'] = str_replace( '7','Mestrado', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;	
+			  case '8':
+				$item_key['cs_escolaridade'] = str_replace( '8','Doutorado', $item_key['cs_escolaridade']);						
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];		
+				break;					
+			  default:	
+			    $item_key['cs_escolaridade'] = 'Não Informado';
+				$result->items[$n]['cs_escolaridade'] =  $item_key['cs_escolaridade'];
+				break;			  
+			}
+            
+			/* SITUACAO sindical e funcional*/	
+			 
+			switch ($item_key['cs_status']) {
+			  case 'T':
+			    //cs_status = situação sindical
+				//cs_satatus_funcional = situação funcional
+				$item_key['cs_status'] = str_replace( 'T','Pendente', $item_key['cs_status']);
+				$item_key['cs_status_funcional'] ='Afastado';
+				
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];
+				
+				break;
+			  case 'I':
+				$item_key['cs_status'] = str_replace( 'I','Filiado', $item_key['cs_status']);
+				$item_key['cs_status_funcional'] = 'Aposentado';
+				
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];				
+				break;
+			  case 'A':
+				$item_key['cs_status'] = str_replace( 'A','Filiado', $item_key['cs_status']);	
+				$item_key['cs_status_funcional'] = 'Ativo';					
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];	
+				break;
+			  case 'D':
+				$item_key['cs_status'] = str_replace( 'D','Desfiliado', $item_key['cs_status']);	
+				$item_key['cs_status_funcional'] = 'Desfiliado';				
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];		
+				break;
+			  case 'X':
+				$item_key['cs_status'] = str_replace( 'X','Desfiliado', $item_key['cs_status']);
+				$item_key['cs_status_funcional'] = 'Excluído';					
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];		
+				break;
+			  case 'F':
+				$item_key['cs_status'] = str_replace( 'F','Desfiliado', $item_key['cs_status']);	
+				$item_key['cs_status_funcional'] = 'Falecido';				
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];			
+				break;
+			  case 'L':
+				$item_key['cs_status'] = str_replace( 'L','Pendente', $item_key['cs_status']);						
+				$item_key['cs_status_funcional'] = 'Licenciado';				
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];			
+				break;	
+			  case 'P':
+				$item_key['cs_status'] = str_replace( 'P','Filiado', $item_key['cs_status']);
+				$item_key['cs_status_funcional'] = 'Pensionista';				
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];		
+				break;	
+			  case 'R':
+				$item_key['cs_status'] = str_replace( 'R','Suspenso', $item_key['cs_status']);						
+				$item_key['cs_status_funcional'] = 'Redistribuído';						
+
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];			
+				break;	
+			  case 'S':
+				$item_key['cs_status'] = str_replace( 'S','Suspenso', $item_key['cs_status']);	
+				$item_key['cs_status_funcional'] = 'Suspenso';				
+				
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];	
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];		
+				break;					
+			  default:	
+			    $item_key['cs_status'] = 'Não Informado';
+			    $item_key['cs_status_funcional'] = 'Não Informado';				
+				
+				$result->items[$n]['cs_status'] =  $item_key['cs_status'];
+				$result->items[$n]['cs_status_funcional'] =  $item_key['cs_status_funcional'];				
+				break;			  
+			}
+			
+			/* UNIDADE */ 
+			switch ($item_key['cs_unidade']) {
+			  case 'C':
+				$item_key['cs_unidade'] = str_replace( 'C','Centro', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'CX':
+				$item_key['cs_unidade'] = str_replace( 'CX','Caxias', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'DG':
+				$item_key['cs_unidade'] = str_replace( 'DG','Reitoria', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'EI':
+				$item_key['cs_unidade'] = str_replace( 'EI','Educação Infantil', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'EN1':
+				$item_key['cs_unidade'] = str_replace( 'EN1','Eng. Novo I', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'EN2':
+				$item_key['cs_unidade'] = str_replace( 'EN2','Eng. Novo II', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;
+			  case 'H1':
+				$item_key['cs_unidade'] = str_replace( 'H1','Humaitá I', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'H2':
+				$item_key['cs_unidade'] = str_replace( 'H2','Humaitá II', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'N':
+				$item_key['cs_unidade'] = str_replace( 'N','Niterói', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'R1':
+				$item_key['cs_unidade'] = str_replace( 'R1','Realengo I', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'R2':
+				$item_key['cs_unidade'] = str_replace( 'R2','Realengo II', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;					
+			  case 'S1':
+				$item_key['cs_unidade'] = str_replace( 'S1','São Cristóvão I', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;			
+			  case 'S1':
+				$item_key['cs_unidade'] = str_replace( 'S1','São Cristóvão II', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'S2':
+				$item_key['cs_unidade'] = str_replace( 'S2','São Cristóvão III', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'T1':
+				$item_key['cs_unidade'] = str_replace( 'T1','Tijuca I', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;	
+			  case 'T2':
+				$item_key['cs_unidade'] = str_replace( 'T2','Tijuca II', $item_key['cs_unidade']);						
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];		
+				break;				
+			  default:	
+			    $item_key['cs_unidade'] = 'Não Informado';
+				$result->items[$n]['cs_unidade'] =  $item_key['cs_unidade'];
+				break;			  
+			}
+			
+			$barra = "";
+			$cel1 = "";
+			$cel2 = ""; 
+			$cel3 = ""; 
+			$cel4 = "";
+			$obs  = $item_key['me_obs'];
+			
+			
+			if (!empty($item_key['te_tel_cel_1'])){
+				
+			   if (!empty($item_key['me_obs'])) {
+				   $barra = " / ";
+			   }	
+			   $cel1 = $barra . "cel1: ". $item_key['te_tel_cel_1'];
+			}
+			
+			if (!empty($item_key['te_tel_cel_2'])){
+				
+				if ((!empty($item_key['me_obs']) or 
+				   (!empty($item_key['te_tel_cel_1']))
+ 				   )) {
+				   $barra = " / ";
+			    }	
+				$cel2 =  $barra . "cel2: " . $item_key['te_tel_cel_2'];
+			}
+			
+			if (!empty($item_key['te_tel_cel_3'])){
+				if  ((!empty($item_key['me_obs'])) or 
+				     (!empty($item_key['te_tel_cel_1'])) or
+ 				     (!empty($item_key['te_tel_cel_2']))
+				     ) {
+				   $barra = " / ";
+			    }	
+				$cel3 = $barra . "cel3: " . $item_key['te_tel_cel_3'];
+			}
+			
+			if (!empty($item_key['te_tel_cel_4'])){
+				if  ((!empty($item_key['me_obs'])) or 
+				     (!empty($item_key['te_tel_cel_1'])) or
+ 				     (!empty($item_key['te_tel_cel_2'])) or
+					 (!empty($item_key['te_tel_cel_3']))
+				     ) {
+				   $barra = " / ";
+			    }	
+				$cel4 = $barra . "cel4: " . $item_key['te_tel_cel_4'];
+			}
+			
+            $result->items[$n]['me_obs'] = $obs . $cel1 . $cel2 . $cel3 . $cel4;
+            
+			$n++;
+			
+		}
+	}
+	
+}
+
+/* CORRIGIR EXIBIÇÃO DA EDIÇÃO DO CAMPO LABEL EM CAMPO ENTITY REFERENCE. */
+function my_module_entityreference_view_widget_rows_alter(&$rows, $entities, $settings) {
+	
+    //dpm($settings->entityreference_label);
+	foreach (element_children($rows) as $key => $child) {
+		
+		if ($rows[$key]['target_id']['#type'] == 'checkbox') {
+		  $rows[$key]['target_id']['#title'] = $rows[$key]['target_id']['#field_suffix'];
+		  // Correção de bug
+		  // Não estava associando for com id em filiados
+		  // TIve que ajustar o id inserindo o "-target-id" no final.
+		  $rows[$key]['target_id']['#attributes']['id'] = $rows[$key]['target_id']['#attributes']['id'] . '-target-id';
+		}
+	  }  
+
+}
+
+/* Não exibir certos campos ou label no modo de visualização full 
+*  Na adição já não exibe pela configuração do tipo de conteúdo.
+*/
+
+function my_module_node_view($node, $view_mode, $langcode) {
+  
+global $user;
+			// if (in_array('filiado', $user->roles) or in_array('pendente', $user->roles) or sizeof($user->roles) == 1 ) {
+			if (in_array('filiado', $user->roles) or in_array('pendente', $user->roles)  or in_array('sem filiado', $user->roles)) {				
+				unset($node->content['field_situacaofiliado']);	
+				unset($node->content['field_desligamento']);			
+				unset($node->content['field_aposentadoria']);
+				unset($node->content['field_aposentadoria_1']);
+				unset($node->content['field_contratado']);
+				unset($node->content['field_auxilio_funeral']);
+				unset($node->content['field_obs']);
+				unset($node->content['field_idacao']);
+			}
+}

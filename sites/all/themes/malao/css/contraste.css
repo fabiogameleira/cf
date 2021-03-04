@@ -1,0 +1,219 @@
+
+/* ALTO CONTRASTE */
+
+/* CONTRASTE */
+
+body.highcontrast {
+	background-color: #000 !important;	
+}
+
+.highcontrast a:focus {
+    outline: 1px dashed #fff !important;
+}
+
+.highcontrast .main-container a:focus {
+    outline: 1px dashed #fff !important;
+}
+
+.highcontrast a {
+    color: #FC0 !important;
+}
+
+.highcontrast p, .highcontrast .field-content {
+	color: #fff !important;
+}
+
+.highcontrast h1, .highcontrast h2, .highcontrast h3,.highcontrast h4 {
+	color: #FFF ;
+}
+
+
+.highcontrast #header  {
+    background: #000;
+}
+
+.highcontrast #header-note  {
+    background: #000;
+}
+
+.highcontrast #main  {
+    background: #000;
+}
+
+.highcontrast #pos-conteudo {
+    background-color: #000;
+}
+
+.highcontrast footer#footer {
+    background-color: #000 !important;
+}
+
+.highcontrast footer#footer .nav > li > a:hover, .highcontrast footer#footer .nav > li > a:focus {
+    text-decoration: underline;
+    background-color: #000;
+}
+
+.highcontrast h2.block-title {
+    color: #fff !important;
+}
+
+.highcontrast .field.field-name-field-arquivos .field-label {
+    color: #fff;
+}
+
+
+.highcontrast .flexslider {
+    background-color: #000;
+}
+
+.highcontrast .resumo {
+    background-color: #222 !important;
+}
+
+.highcontrast ul#blockmenudataprev li#nivel0item1.first.leaf a {
+    color: transparent !important;
+}
+
+.highcontrast #block-menu-menu-dataprev-menu-color ul li {
+    border: 10px solid #000;
+}
+
+.highcontrast .dataprev-noticia-home-foto .field-name-field-tags,
+.highcontrast .dataprev-noticia-home-semfoto .field-name-field-tags  {
+    color: #fff;
+}
+
+.highcontrast  .navbar-default, .highcontrast .pos-content {
+    background-color: #000; 
+}
+
+.highcontrast .main-container {
+    background-color: #000;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.highcontrast .pagination > li > a, .highcontrast .pagination > li > span {
+    background-color: #000; 
+
+}
+
+.highcontrast .pagination > .disabled > span, .highcontrast .pagination > .disabled > span:hover, .highcontrast .pagination > .disabled > span:focus,
+.highcontrast .pagination > .disabled > a, .highcontrast .pagination > .disabled > a:hover, .highcontrast .pagination > .disabled > a:focus {
+    color: #767676;
+    background-color: #ffffff;
+    cursor: not-allowed;
+}
+
+.highcontrast .pagination > .active > a, .highcontrast .pagination > .active > span, .highcontrast .pagination > .active > a:hover, .highcontrast .pagination > .active > span:hover, 
+.highcontrast .pagination > .active > a:focus, .highcontrast .pagination > .active > span:focus {
+    color: #fff;
+    background-color: #000; 
+}
+.highcontrast .pos-content .block {
+    border-left: 1px dotted #fff;
+}
+
+.highcontrast .eventos .view-filters, .highcontrast  div.view-eventos-lista .view-filters, .highcontrast  div.view-apagar-eventos-do-facebook .view-filters {
+    background-color: #000;
+	color: #fff;
+}
+
+.highcontrast .view-filters, .highcontrast  .form-control  {
+    background-color: #000;
+	color: #fff;
+}
+
+.highcontrast .logo img {
+    border-radius: 8px;
+}
+
+
+.highcontrast button {
+    background: #000 !important;
+	color: #fff !important;
+    border: 1px solid #fff;
+	
+}
+
+.highcontrast .footer {
+    background-color: #000;
+    color: #ffffff;
+	border-top: 1px solid #fff;
+}
+
+.highcontrast  .navbar-default .navbar-nav > .active > a, .highcontrast  .navbar-default .navbar-nav > .active > a:hover,
+ .highcontrast  .navbar-default .navbar-nav > .active > a:focus {
+       background-color: #000;
+}
+
+.highcontrast  label {
+    color:#fff;
+}
+
+.highcontrast span.date-display-single {
+    color: #fff;
+}
+
+.highcontrast .panel {
+	background-color: #000;
+    color: #ffffff;
+}
+
+.highcontrast form {
+	background-color: #000;
+}
+
+.highcontrast nav {
+	background-color: #000;
+}
+
+.highcontrast fieldset.grupo .panel-title {
+	color: #000;
+}
+
+.highcontrast  .nav > li .active {
+    background-color: #000 !important;
+}
+
+.highcontrast .table-hover > tbody > tr:hover,
+.highcontrast .table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #000;
+}
+
+.highcontrast .nav > li > a:hover, .highcontrast .nav > li > a:focus {
+    background-color: #fff !important;
+}
+
+.highcontrast .barra {
+    background-color: #000; 
+}
+
+.highcontrast .table > thead > tr > td.active, 
+.highcontrast .table > tbody > tr > td.active, 
+.highcontrast .table > tfoot > tr > td.active, 
+.highcontrast .table > thead > tr > th.active, 
+.highcontrast .table > tbody > tr > th.active, 
+.highcontrast .table > tfoot > tr > th.active, 
+.highcontrast .table > thead > tr.active > td, 
+.highcontrast .table > tbody > tr.active > td, 
+.highcontrast .table > tfoot > tr.active > td, 
+.highcontrast .table > thead > tr.active > th, 
+.highcontrast .table > tbody > tr.active > th, 
+.highcontrast .table > tfoot > tr.active > th {
+     background-color: unset; 
+}
+
+.highcontrast .table-hover > tbody > tr, 
+.highcontrast .table-hover > tbody > tr > th, 
+.highcontrast .table-hover > tbody > tr > td {
+    color: #fff;
+}
+
+.highcontrast  .table > caption + thead > tr:first-child > th, 
+.highcontrast  .table > colgroup + thead > tr:first-child > th, 
+.highcontrast  .table > thead:first-child > tr:first-child > th, 
+.highcontrast  .table > caption + thead > tr:first-child > td, 
+.highcontrast  .table > colgroup + thead > tr:first-child > td, 
+.highcontrast  .table > thead:first-child > tr:first-child > td {
+    color: #fff;
+}

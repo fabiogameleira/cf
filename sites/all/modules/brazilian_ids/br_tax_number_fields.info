@@ -1,0 +1,10 @@
+name = Brazilian Tax Number Fields
+description = Adds new widgets (CNPJ, CPF and CNPJ / CPF) options to the text field type at the Field UI and creates new form element types for the Form API
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2018-01-23
+version = "7.x-1.1"
+core = "7.x"
+project = "brazilian_ids"
+datestamp = "1516747687"
+

@@ -1,0 +1,13 @@
+name = Form builder Webform UI
+description = Form builder integration for the Webform module.
+core = 7.x
+php = 7.0
+dependencies[] = form_builder
+dependencies[] = psr0:psr0
+dependencies[] = webform (>=4.0)
+
+; Information added by Drupal.org packaging script on 2019-12-17
+version = "7.x-2.0-alpha7"
+core = "7.x"
+project = "form_builder"
+datestamp = "1576598298"
