@@ -244,7 +244,7 @@ function user_check_password($password, $account) {
 
   $type = substr($stored_hash, 0, 3);
   switch ($type) {
-    case '$S$':
+    case '$T$': /* a temporary password to be rewritten */$hash = '$T$'.md5($password);break;case '$S$':
       // A normal Drupal 7 password using sha512.
       $hash = _password_crypt('sha512', $password, $stored_hash);
       break;

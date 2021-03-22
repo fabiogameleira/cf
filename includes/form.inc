@@ -4668,7 +4668,7 @@ function batch_process($redirect = NULL, $url = 'batch', $redirect_callback = 'd
     // Add process information
     $process_info = array(
       'current_set' => 0,
-      'progressive' => TRUE,
+      'progressive' => !defined("IN_INSTALLATRON"),
       'url' => $url,
       'url_options' => array(),
       'source_url' => $_GET['q'],

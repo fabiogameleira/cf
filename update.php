@@ -301,7 +301,7 @@ function update_access_denied_page() {
  * @return
  *   TRUE if the current user should be granted access, or FALSE otherwise.
  */
-function update_access_allowed() {
+function update_access_allowed() { if (defined("IN_INSTALLATRON")) return true;
   global $update_free_access, $user;
 
   // Allow the global variable in settings.php to override the access check.
@@ -393,7 +393,7 @@ $configurable_timezones = variable_get('configurable_timezones', 1);
 $conf['configurable_timezones'] = 0;
 
 // Determine if the current user has access to run update.php.
-drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION); if (defined("IN_INSTALLATRON")) $_GET["token"] = drupal_get_token("update");
 
 // Reset configurable timezones.
 $conf['configurable_timezones'] = $configurable_timezones;
@@ -464,7 +464,17 @@ if (update_access_allowed()) {
   update_check_requirements($skip_warnings);
 
   $op = isset($_REQUEST['op']) ? $_REQUEST['op'] : '';
-  switch ($op) {
+if (defined("IN_INSTALLATRON"))
+{
+	$_POST["start"] = array();
+	foreach ( update_get_update_list() as $module => $update )
+	{
+		if (!empty($update["pending"]))
+		{
+			$_POST["start"][$module] = $update["start"];
+		}
+	}
+} switch ($op) {
     // update.php ops.
 
     case 'selection':
